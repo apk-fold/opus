@@ -4,9 +4,15 @@ Application Android sur mesure pour écouter sa musique depuis un serveur [Navid
 Thème sombre à couleur réglable, animations GSAP, paroles synchronisées, mode hors-ligne, et pilotage de deemix depuis l'appli.
 Emballée en APK avec [Capacitor](https://capacitorjs.com/), avec une disposition adaptée au Galaxy Z Fold (plié / déplié).
 
+## Nouveautés v4
+- Un titre ne démarre plus au milieu : l'ancienne position de reprise n'est appliquée qu'au titre auquel elle appartient.
+- Lecture en arrière-plan renforcée (verrou CPU/Wi-Fi pendant la lecture, passage au titre suivant surveillé). Réglages › Lecture en arrière-plan : bouton pour retirer la restriction de batterie.
+- Hors-ligne : tri des artistes, albums et playlists (A→Z, récents, plus de titres, plus lourds) et menu ⋯ › « Télécharger toutes mes playlists ».
+- L'APK est compilé automatiquement par GitHub Actions à chaque mise à jour (onglet Releases).
+
 ## Télécharger l'APK
 
-➡️ **[Télécharger Opus v3 (`opus.apk`)](https://github.com/apk-fold/opus/raw/main/opus.apk)**, soit 4,6 Mo. Le fichier est aussi visible
+➡️ **[Télécharger Opus v4 (`opus.apk`)](https://github.com/apk-fold/opus/raw/main/opus.apk)**, soit 4,6 Mo. Le fichier est aussi visible
 dans la liste des fichiers du dépôt.
 
 Empreinte SHA-256 pour vérifier le fichier : `63dc6c04ec14fc8d3ec5ed4c77b54b1d70bf6199b5b57f6256a27404fc1c16af`
