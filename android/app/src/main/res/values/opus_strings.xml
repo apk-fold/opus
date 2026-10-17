@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sc_flow">Flow</string>
+    <string name="sc_flow_long">Lancer le Flow</string>
+    <string name="sc_offline">Hors-ligne</string>
+    <string name="sc_offline_long">Musique hors-ligne</string>
+    <string name="sc_search">Recherche</string>
+    <string name="sc_search_long">Rechercher dans Opus</string>
+    <string name="widget_desc">Titre en cours, lecture / pause et raccourcis Flow, Hors-ligne, Recherche</string>
+    <string name="widget_hint">Touche pour ouvrir</string>
+    <string name="w_prev">Précédent</string>
+    <string name="w_toggle">Lecture / pause</string>
+    <string name="w_next">Suivant</string>
+</resources>

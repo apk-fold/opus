@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Appui long sur l'icône Opus : Flow, Hors-ligne, Recherche (liens opus://… gérés par l'appli) -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="flow" android:enabled="true" android:icon="@drawable/sc_flow"
+        android:shortcutShortLabel="@string/sc_flow" android:shortcutLongLabel="@string/sc_flow_long">
+        <intent android:action="android.intent.action.VIEW" android:data="opus://flow"
+            android:targetPackage="fr.naviviolet.app" android:targetClass="fr.naviviolet.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="offline" android:enabled="true" android:icon="@drawable/sc_offline"
+        android:shortcutShortLabel="@string/sc_offline" android:shortcutLongLabel="@string/sc_offline_long">
+        <intent android:action="android.intent.action.VIEW" android:data="opus://offline"
+            android:targetPackage="fr.naviviolet.app" android:targetClass="fr.naviviolet.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="search" android:enabled="true" android:icon="@drawable/sc_search"
+        android:shortcutShortLabel="@string/sc_search" android:shortcutLongLabel="@string/sc_search_long">
+        <intent android:action="android.intent.action.VIEW" android:data="opus://search"
+            android:targetPackage="fr.naviviolet.app" android:targetClass="fr.naviviolet.app.MainActivity" />
+    </shortcut>
+</shortcuts>

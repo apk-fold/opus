@@ -1,0 +1,19 @@
+{
+  "appId": "fr.naviviolet.app",
+  "appName": "Opus",
+  "webDir": "dist",
+  "backgroundColor": "#05030a",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#05030a"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,18 @@
+[Unit]
+Description=Opus deemix (téléchargements Deezer vers Navidrome)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/opus-deemix.env
+ExecStart=/usr/bin/python3 /opt/opus-deemix/opus-deemix.py
+Restart=on-failure
+RestartSec=5
+UMask=0022
+# root par défaut (deemix a été installé et configuré en root) ; voir README-serveur.md pour un autre utilisateur
+User=root
+Environment=HOME=/root
+
+[Install]
+WantedBy=multi-user.target

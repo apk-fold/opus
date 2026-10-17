@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#05030a">
+  <meta name="color-scheme" content="dark">
+  <title>Opus</title>
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="bgwrap" aria-hidden="true">
+      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+      <canvas id="bg"></canvas>
+    </div>
+
+    <aside id="rail">
+      <div class="brand"><span class="logo-mark"></span><b>OPUS</b></div>
+      <nav id="rail-nav"><i class="ind"></i></nav>
+    </aside>
+
+    <div id="main">
+      <header id="top">
+        <button id="back" class="ic-btn tap" hidden aria-label="Retour"></button>
+        <div class="top-title"></div>
+        <a id="top-search" class="ic-btn tap" href="#/search" aria-label="Rechercher"></a>
+      </header>
+      <main id="view" tabindex="-1"><div id="page"></div></main>
+    </div>
+
+    <div id="mini" class="mini"></div>
+    <nav id="tabs"><i class="ind"></i></nav>
+
+    <section id="np" class="np" aria-hidden="true"></section>
+    <div id="overlays"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <div id="login" hidden>
+      <form class="login-card" autocomplete="on">
+        <div class="login-logo"><span class="logo-mark big"></span></div>
+        <h1>Bienvenue</h1>
+        <p class="lead">Connecte-toi à ton serveur Navidrome.</p>
+        <label>Serveur
+          <input name="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" value="http://100.91.164.116:4533" placeholder="http://100.x.x.x:4533">
+        </label>
+        <label>Utilisateur
+          <input name="user" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+        </label>
+        <label>Mot de passe
+          <input name="pass" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn primary glow big tap ripple" type="submit">Se connecter</button>
+        <p class="err" role="alert"></p>
+        <p class="hint">Le mot de passe n'est jamais enregistré : seul un jeton chiffré (MD5 + sel) est conservé sur ce téléphone.</p>
+      </form>
+    </div>
+
+    <div id="intro">
+      <div class="intro-logo"><span>O</span><span>P</span><span>U</span><span>S</span></div>
+      <div class="intro-sub">NAVIDROME</div>
+      <div class="intro-line"><i></i></div>
+    </div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

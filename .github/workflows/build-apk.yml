@@ -1,0 +1,52 @@
+name: Compiler l'APK Opus
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['opus.apk', 'README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Dépendances
+        run: npm ci || npm install
+      - name: Build web + synchronisation Android
+        run: npm run sync
+      - name: Compiler l'APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Récupérer l'APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk opus.apk && sha256sum opus.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opus-apk
+          path: opus.apk
+      - name: Publier la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" opus.apk --title "Opus – build ${{ github.run_number }}" --notes "APK compilé automatiquement (${GITHUB_SHA::7})." --latest
+      - name: Enregistrer l'APK dans le dépôt
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f opus.apk
+          git commit -m "APK Opus (build ${{ github.run_number }})" || exit 0
+          git pull --rebase origin main && git push
