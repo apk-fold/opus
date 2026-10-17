@@ -6,7 +6,11 @@ import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.PowerManager;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.provider.Settings;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -19,6 +23,23 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class OpusKeepAlivePlugin extends Plugin {
     private PowerManager.WakeLock cpu;
     private WifiManager.WifiLock wifi;
+
+    // Android 13+ : sans cette autorisation, la notification de lecture (play/pause/suivant) reste invisible
+    @PluginMethod
+    public void requestNotifications(PluginCall call) {
+        boolean granted = true;
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                granted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+                if (!granted && getActivity() != null) {
+                    ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4242);
+                }
+            }
+        } catch (Exception ignored) { }
+        JSObject r = new JSObject();
+        r.put("granted", granted);
+        call.resolve(r);
+    }
 
     @PluginMethod
     public void hold(PluginCall call) {

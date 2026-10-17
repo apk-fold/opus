@@ -16,11 +16,13 @@ export function requestUnrestricted() {
 }
 
 export function initKeepAlive() {
-  let held = false;
+  let held = false, asked = false;
   const sync = () => {
     const want = !!player.playing;
     if (want === held) return;
     held = want;
+    // 1re lecture : demande l'autorisation d'afficher la notification de lecture (Android 13+)
+    if (want && !asked) { asked = true; if (isNative()) Native.requestNotifications().catch(() => {}); }
     if (isNative()) (want ? Native.hold() : Native.release()).catch(() => { /* ancien APK */ });
   };
   player.on('state', sync);

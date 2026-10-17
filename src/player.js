@@ -232,7 +232,12 @@ class Player {
     a.preservesPitch = true;
     this._sleepFade = this.sleepEnd ? this._sleepFade : 1;
     this._applyVolume();
-    if (autoplay) { this._resumeCtx(); a.play().catch(() => {}); }
+    if (autoplay) {
+      this._resumeCtx();
+      // la notification reste en « lecture » pendant le changement de titre (sinon Android peut couper le service)
+      try { navigator.mediaSession.playbackState = 'playing'; } catch { /* ignoré */ }
+      a.play().catch(() => {});
+    }
     this._meta();
     this.emit('track', s);
     this.emit('queue');
