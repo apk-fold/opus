@@ -22,6 +22,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Clé de signature fixe (les mises à jour s'installent par-dessus)
+        run: |
+          mkdir -p ~/.android
+          cp ci/debug.keystore ~/.android/debug.keystore
       - name: Dépendances
         run: npm ci || npm install
       - name: Build web + synchronisation Android
