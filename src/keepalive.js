@@ -23,13 +23,15 @@ export function initKeepAlive() {
     held = want;
     // 1re lecture : demande l'autorisation d'afficher la notification de lecture (Android 13+)
     if (want && !asked) { asked = true; if (isNative()) Native.requestNotifications().catch(() => {}); }
-    if (isNative()) (want ? Native.hold() : Native.release()).catch(() => { /* ancien APK */ });
+    // avec le lecteur natif (ExoPlayer), le service garde lui-même le processeur et le Wi-Fi éveillés
+    if (isNative() && !player._nativeOn) (want ? Native.hold() : Native.release()).catch(() => { /* ancien APK */ });
   };
   player.on('state', sync);
   player.on('track', sync);
 
   // Filet de sécurité : si le titre est fini mais que l'événement « ended » n'est jamais arrivé
   // (webview gelée en arrière-plan), ou si la lecture s'est arrêtée seule au milieu de la file, on enchaîne.
+  if (player._nativeOn) return;
   let lastT = -1, stuck = 0;
   setInterval(() => {
     try {

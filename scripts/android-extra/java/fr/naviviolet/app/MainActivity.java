@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(OpusWidgetPlugin.class);
         registerPlugin(OpusKeepAlivePlugin.class);
+        registerPlugin(OpusNativePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

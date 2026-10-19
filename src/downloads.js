@@ -170,6 +170,12 @@ export const downloads = {
     downloads.save();
   },
 
+  // chemin file:// du fichier, pour le lecteur natif (qui ne passe pas par la WebView)
+  async nativeUri(id) {
+    const d = downloads.index[id];
+    return d ? uriOf(d.path, d.dir || Directory.Data) : null;
+  },
+
   async remove(id) {
     const d = downloads.index[id];
     if (!d) return;

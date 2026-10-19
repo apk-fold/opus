@@ -25,12 +25,24 @@ jobs:
       - name: Dépendances
         run: npm ci || npm install
       - name: Build web + synchronisation Android
-        run: npm run sync
+        run: |
+          set -o pipefail
+          npm run sync 2>&1 | tee /tmp/sync.log
       - name: Compiler l'APK
         working-directory: android
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+      - name: Journal de compilation (branche ci-log)
+        if: always()
+        run: |
+          mkdir -p /tmp/logs && cp /tmp/sync.log /tmp/gradle.log /tmp/logs/ 2>/dev/null || true
+          cd /tmp/logs && git init -q && git checkout -q -b ci-log
+          git config user.name github-actions && git config user.email actions@users.noreply.github.com
+          tail -n 400 gradle.log > gradle-tail.log 2>/dev/null || true
+          git add -A && git commit -qm "log build ${{ github.run_number }}" || true
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-log || true
       - name: Récupérer l'APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk opus.apk && sha256sum opus.apk
       - uses: actions/upload-artifact@v4
@@ -45,8 +57,11 @@ jobs:
           gh release create "$TAG" opus.apk --title "Opus – build ${{ github.run_number }}" --notes "APK compilé automatiquement (${GITHUB_SHA::7})." --latest
       - name: Enregistrer l'APK dans le dépôt
         run: |
+          cp opus.apk /tmp/opus.apk
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
+          git fetch origin main && git reset -q --hard origin/main
+          cp /tmp/opus.apk opus.apk
           git add -f opus.apk
           git commit -m "APK Opus (build ${{ github.run_number }})" || exit 0
-          git pull --rebase origin main && git push
+          git push origin HEAD:main

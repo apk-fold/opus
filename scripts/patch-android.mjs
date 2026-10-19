@@ -159,4 +159,33 @@ if (existsSync(extra)) {
   }
 }
 
+// 5. Lecteur natif (Media3 / ExoPlayer) : dépendances Gradle + service de lecture
+const gradlePath = join(root, 'app/build.gradle');
+if (existsSync(gradlePath)) {
+  let g = readFileSync(gradlePath, 'utf8');
+  if (!g.includes('androidx.media3:media3-exoplayer')) {
+    g = g.replace(/dependencies \{/, `dependencies {
+    implementation "androidx.media3:media3-exoplayer:1.8.0"
+    implementation "androidx.media3:media3-session:1.8.0"
+    implementation "androidx.media3:media3-common:1.8.0"`);
+    writeFileSync(gradlePath, g);
+    log('Media3 (ExoPlayer) ajouté à Gradle.');
+  } else log('Media3 : déjà dans Gradle.');
+}
+if (existsSync(manifestPath)) {
+  let x = readFileSync(manifestPath, 'utf8');
+  if (!x.includes('OpusPlaybackService')) {
+    x = x.replace(/(\n\s*<\/application>)/, `
+
+        <!-- lecteur natif : ExoPlayer + notification média -->
+        <service android:name=".OpusPlaybackService" android:exported="true" android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>$1`);
+    writeFileSync(manifestPath, x);
+    log('Manifest : service de lecture natif déclaré.');
+  } else log('Manifest : service de lecture déjà déclaré.');
+}
+
 log('OK.');

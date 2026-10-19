@@ -8,6 +8,7 @@ import { playLog } from './history.js';
 import { BANDS } from './eq.js';
 import { feat } from './flags.js';
 import { cleanList } from './bans.js';
+import { NativeAudio, nativeAvailable } from './native-audio.js';
 
 const LONG = 900; // « longs titres » (s) : position mémorisée par titre
 
@@ -59,7 +60,20 @@ class Player {
     this._corsOK = true;
     this._extending = false;
     this._plainEl = null;     // élément sans graphe, pour les radios (pas de CORS)
-    this.audio = this._main = this._makeAudio();
+    // Android : ExoPlayer (service natif) joue la musique ; ailleurs : élément <audio> classique
+    this._nativeOn = nativeAvailable();
+    if (this._nativeOn) {
+      this._corsOK = false; // pas d'égaliseur Web Audio avec le lecteur natif
+      const n = new NativeAudio();
+      n.onTransition = (e) => this._nativeAdvanced(e);
+      this._bindAudio(n);
+      this.audio = this._main = n;
+      this.on('queue', () => this._syncNativeSoon());
+      this.on('state', () => this._syncNativeSoon());
+      this.on('sleep', () => this._syncNativeSoon());
+    } else {
+      this.audio = this._main = this._makeAudio();
+    }
     this._applyVolume();
     this._bindMediaSession();
     this._restore();
@@ -157,7 +171,7 @@ class Player {
     }
     // fondu enchaîné : démarre quand il reste `fade` secondes
     const fade = Number(settings.get('crossfade')) || 0;
-    if (fade > 0 && !this._xf && this.playing && !s.isRadio && this.repeat !== 'one' && !this.sleepAtTrackEnd && !this.sleepAtAlbumEnd && this.duration > fade * 2 + 4) {
+    if (fade > 0 && !this._nativeOn && !this._xf && this.playing && !s.isRadio && this.repeat !== 'one' && !this.sleepAtTrackEnd && !this.sleepAtAlbumEnd && this.duration > fade * 2 + 4) {
       const left = this.duration - a.currentTime;
       const sleepLeft = this.sleepEnd ? (this.sleepEnd - Date.now()) / 1000 : Infinity;
       if (left <= fade + 0.05 && sleepLeft > fade + 3) this._startCrossfade(fade);
@@ -197,12 +211,18 @@ class Player {
   _needCors(s) { return !s.isRadio && this._corsOK && (settings.get('eq') || this._connected); }
 
   _setSrc(a, s) {
+    if (a.isNative) {
+      const rg = this._rg(s);
+      a.gain = rg;
+      a.setSong(s, (x) => this._nativeItem(x), 0);
+      return;
+    }
     a._ok = false;
     if (this._needCors(s)) a.crossOrigin = 'anonymous'; else a.removeAttribute('crossorigin');
     a.src = this.srcFor(s);
   }
 
-  _load(autoplay) {
+  _load(autoplay, fromNative = false) {
     this._cancelXf();
     const s = this.current;
     if (!s) {
@@ -227,12 +247,12 @@ class Player {
       const p = this._longPos[s.id];
       if (p > 15 && p < s.duration - 20) { this._resumeAt = p; this._resumeId = s.id; }
     }
-    this._setSrc(a, s);
-    a.playbackRate = this.rate;
+    if (!fromNative) this._setSrc(a, s);
+    if (a.playbackRate !== this.rate) a.playbackRate = this.rate;
     a.preservesPitch = true;
     this._sleepFade = this.sleepEnd ? this._sleepFade : 1;
     this._applyVolume();
-    if (autoplay) {
+    if (autoplay && !fromNative) {
       this._resumeCtx();
       // la notification reste en « lecture » pendant le changement de titre (sinon Android peut couper le service)
       try { navigator.mediaSession.playbackState = 'playing'; } catch { /* ignoré */ }
@@ -243,6 +263,69 @@ class Player {
     this.emit('queue');
     this._persist();
     this._maybeExtend();
+    if (a.isNative) this._syncNative(true);
+  }
+
+  // ---------- lecteur natif : description des titres, file envoyée au service ----------
+  async _nativeItem(s) {
+    let uri = null;
+    if (downloads.get(s.id)) { try { uri = await downloads.nativeUri(s.id); } catch { uri = null; } }
+    if (!uri) uri = api.streamUrl(s.id, { bitrate: settings.get('quality') });
+    let art = '';
+    try { art = s.isRadio ? '' : api.coverUrl(s.coverArt || s.albumId || s.id, 512); } catch { art = ''; }
+    return { id: String(s.id), uri, title: s.title || '', artist: s.artist || '', album: s.album || '', art, duration: s.duration || 0, gain: this._rg(s) };
+  }
+  _nativePlan() {
+    const n = this.queue.length, cur = this.index, s = this.current;
+    const plan = { expect: String(s.id), prev: null, up: [], repeat: 0 };
+    if (this.repeat === 'one') { plan.repeat = 1; return plan; }
+    if (this.sleepAtTrackEnd) return plan;
+    const all = this.repeat === 'all';
+    const idx = [];
+    let i = cur + 1;
+    for (let k = 0; k < 40; k++) {
+      if (i >= n) { if (!all) break; i = 0; }
+      if (i === cur) break;
+      const t = this.queue[i];
+      if (!t || t.isRadio) break;
+      if (this.sleepAtAlbumEnd && t.albumId !== s.albumId) break;
+      idx.push(i); i++;
+    }
+    plan.upIdx = idx;
+    plan.up = idx.map((j) => this.queue[j]);
+    if (all && idx.length === n - 1 && !this.sleepAtAlbumEnd) plan.repeat = 2; // toute la file tient : le service boucle seul
+    else if (cur > 0 && !this.queue[cur - 1].isRadio) plan.prev = this.queue[cur - 1];
+    return plan;
+  }
+  _syncNativeSoon() { clearTimeout(this._snT); this._snT = setTimeout(() => this._syncNative(false), 300); }
+  _syncNative(force) {
+    const a = this.audio;
+    if (!this._nativeOn || !a?.isNative) return;
+    const s = this.current;
+    if (!s || s.isRadio) return;
+    const plan = this._nativePlan();
+    const sig = [plan.repeat, plan.prev?.id, s.id, ...plan.up.map((x) => x.id)].join(',');
+    a.syncUpcoming(plan, (x) => this._nativeItem(x), force ? sig + '#' + Date.now() : sig);
+    a.setSleepAt(this.sleepEnd || 0);
+  }
+  // le service a enchaîné sur un autre titre (la page dormait, bouton de la notification…)
+  _nativeAdvanced(e) {
+    const a = this.audio;
+    if (!a?.isNative || !this.queue.length) return;
+    const n = this.queue.length;
+    const forward = e.reason !== 2 || e.idx > (e.prevIdx ?? -1);
+    let qi = -1;
+    for (let k = 0; k < n && qi < 0; k++) {
+      const i = forward ? (this.index + (e.reason === 0 ? k : k + 1)) % n : ((this.index - k - 1) % n + n) % n;
+      if (String(this.queue[i]?.id) === e.id) qi = i;
+    }
+    if (qi < 0) qi = this.queue.findIndex((x) => String(x.id) === e.id);
+    if (qi < 0) return;
+    this._forgetLong(this.current);
+    this._dir = forward ? 1 : -1;
+    this.index = qi;
+    a.gain = this._rg(this.queue[qi]);
+    this._load(true, true);
   }
 
   // recharge le titre courant à la même position (activation de l'égaliseur, repli CORS)
@@ -730,6 +813,7 @@ class Player {
 
   // ---------- MediaSession (notification, écran de verrouillage, casque) ----------
   _meta() {
+    if (this._nativeOn) return; // la notification vient du service natif
     if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
     const s = this.current;
     if (!s) return;
@@ -739,17 +823,17 @@ class Player {
     } catch { /* ignoré */ }
   }
   _syncSession() {
-    if (!('mediaSession' in navigator)) return;
+    if (this._nativeOn || !('mediaSession' in navigator)) return;
     try { navigator.mediaSession.playbackState = this.audio.paused ? 'paused' : 'playing'; } catch { /* ignoré */ }
   }
   _positionState() {
-    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+    if (this._nativeOn || !('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
     const d = this.audio.duration;
     if (!Number.isFinite(d) || d <= 0) return;
     try { navigator.mediaSession.setPositionState({ duration: d, playbackRate: this.rate, position: Math.min(this.time, d) }); } catch { /* ignoré */ }
   }
   _bindMediaSession() {
-    if (!('mediaSession' in navigator)) return;
+    if (this._nativeOn || !('mediaSession' in navigator)) return;
     const set = (name, fn) => { try { navigator.mediaSession.setActionHandler(name, fn); } catch { /* action non supportée */ } };
     set('play', () => this.play());
     set('pause', () => this.pause());
