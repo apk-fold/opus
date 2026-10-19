@@ -11,14 +11,66 @@ const randHex = (n) =>
 
 const arr = (x) => (x == null ? [] : Array.isArray(x) ? x : [x]);
 
+// identifiant stable d'un serveur (adresse + utilisateur)
+const sidOf = (cfg) => (cfg ? `${cfg.url}|${cfg.user}` : '');
+const hostOf = (url) => { try { return new URL(url).host; } catch { return url; } };
+
+// marque chaque objet reçu (titre, album, artiste…) avec le serveur d'où il vient : on peut ainsi
+// lire / télécharger un titre de n'importe quel serveur, même après avoir changé de serveur actif
+function tag(node, sid) {
+  if (Array.isArray(node)) { for (const x of node) tag(x, sid); return; }
+  if (!node || typeof node !== 'object') return;
+  if (node.id != null && node.srv == null) node.srv = sid;
+  for (const k in node) { const v = node[k]; if (v && typeof v === 'object') tag(v, sid); }
+}
+
 class Api {
   constructor() {
     this.cfg = store.get('auth', null);
+    // plusieurs serveurs Navidrome : [{ id, name, cfg }] ; cfg = serveur actif
+    this.servers = store.get('servers', []) || [];
+    if (this.cfg && !this.servers.some((x) => x.id === sidOf(this.cfg))) {
+      this.servers.push({ id: sidOf(this.cfg), name: hostOf(this.cfg.url), cfg: this.cfg });
+      store.set('servers', this.servers);
+    }
   }
 
   get ready() { return !!this.cfg; }
   get user() { return this.cfg?.user || ''; }
   get server() { return this.cfg?.url || ''; }
+  get activeId() { return sidOf(this.cfg); }
+  get activeName() { return this.servers.find((x) => x.id === this.activeId)?.name || hostOf(this.server); }
+  cfgFor(srv) { return (srv && this.servers.find((x) => x.id === srv)?.cfg) || this.cfg; }
+
+  // ajoute un serveur (vérifie l'adresse et les identifiants) ; active = le rend actif
+  async addServer(url, user, password, name = '', active = false) {
+    url = url.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+    const salt = randHex(8);
+    const cfg = { url, user: user.trim(), salt, token: md5(password + salt) };
+    await this._call(cfg, 'ping');
+    const id = sidOf(cfg);
+    const entry = { id, name: name.trim() || hostOf(url), cfg };
+    const i = this.servers.findIndex((x) => x.id === id);
+    if (i >= 0) this.servers[i] = entry; else this.servers.push(entry);
+    store.set('servers', this.servers);
+    if (active || !this.cfg) this.use(id);
+    return entry;
+  }
+  use(id) {
+    const sv = this.servers.find((x) => x.id === id);
+    if (!sv) return false;
+    this.cfg = sv.cfg;
+    store.set('auth', sv.cfg);
+    return true;
+  }
+  removeServer(id) {
+    this.servers = this.servers.filter((x) => x.id !== id);
+    store.set('servers', this.servers);
+    if (this.activeId === id) {
+      if (this.servers.length) this.use(this.servers[0].id); else this.logout();
+    }
+  }
 
   async login(url, user, password) {
     url = url.trim().replace(/\/+$/, '');
@@ -28,12 +80,22 @@ class Api {
     await this._call(cfg, 'ping'); // lève une erreur si l'URL ou les identifiants sont faux
     this.cfg = cfg;
     store.set('auth', cfg);
+    const id = sidOf(cfg);
+    const entry = { id, name: hostOf(url), cfg };
+    const i = this.servers.findIndex((x) => x.id === id);
+    if (i >= 0) this.servers[i] = { ...this.servers[i], cfg }; else this.servers.push(entry);
+    store.set('servers', this.servers);
     return cfg;
   }
 
+  // déconnexion du serveur actif (les autres serveurs enregistrés restent)
   logout() {
+    const id = this.activeId;
+    this.servers = this.servers.filter((x) => x.id !== id);
+    store.set('servers', this.servers);
     this.cfg = null;
     store.del('auth');
+    if (this.servers.length) this.use(this.servers[0].id);
   }
 
   _qs(cfg, params = {}) {
@@ -46,8 +108,9 @@ class Api {
     return q;
   }
 
-  url(endpoint, params) {
-    return `${this.cfg.url}/rest/${endpoint}?${this._qs(this.cfg, params)}`;
+  url(endpoint, params, srv) {
+    const cfg = this.cfgFor(srv);
+    return `${cfg.url}/rest/${endpoint}?${this._qs(cfg, params)}`;
   }
 
   async _call(cfg, endpoint, params) {
@@ -72,17 +135,18 @@ class Api {
       err.code = data?.error?.code;
       throw err;
     }
+    tag(data, sidOf(cfg));
     return data;
   }
 
   call(endpoint, params) { return this._call(this.cfg, endpoint, params); }
 
   // ---------- URLs médias ----------
-  coverUrl(id, size = 300) { return id ? this.url('getCoverArt', { id, size }) : ''; }
-  streamUrl(id, { bitrate = 0 } = {}) {
-    return this.url('stream', bitrate ? { id, maxBitRate: bitrate, format: 'mp3' } : { id });
+  coverUrl(id, size = 300, srv) { return id ? this.url('getCoverArt', { id, size }, srv) : ''; }
+  streamUrl(id, { bitrate = 0 } = {}, srv) {
+    return this.url('stream', bitrate ? { id, maxBitRate: bitrate, format: 'mp3' } : { id }, srv);
   }
-  downloadUrl(id) { return this.url('download', { id }); }
+  downloadUrl(id, srv) { return this.url('download', { id }, srv); }
 
   // ---------- Bibliothèque ----------
   async albumList(type, { size = 40, offset = 0, genre } = {}) {
@@ -175,7 +239,7 @@ class Api {
   // kind : 'id' (titre), 'albumId', 'artistId'
   star(kind, id, on = true) { return this.call(on ? 'star' : 'unstar', { [kind]: id }); }
   rate(id, rating) { return this.call('setRating', { id, rating }); }
-  scrobble(id, submission) { return this.call('scrobble', { id, submission }).catch(() => {}); }
+  scrobble(id, submission, srv) { return this._call(this.cfgFor(srv), 'scrobble', { id, submission }).catch(() => {}); }
 
   async lyrics(id) {
     try {

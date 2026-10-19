@@ -26,7 +26,7 @@ export const coverFor = (s, size = 300) => {
   const d = downloads.get(s.id);
   if (d?.cover) return d.cover;
   const id = s.coverArt || s.albumId || (s.isRadio ? null : s.id);
-  return id ? api.coverUrl(id, size) : '';
+  return id ? api.coverUrl(id, size, s.srv) : '';
 };
 
 class Player {
@@ -124,7 +124,7 @@ class Player {
       this._errors = 0;
       this.emit('state');
       const s = this.current;
-      if (s && !s.isRadio && !this._nowSent) { this._nowSent = true; if (this._report()) api.scrobble(s.id, false); }
+      if (s && !s.isRadio && !this._nowSent) { this._nowSent = true; if (this._report()) api.scrobble(s.id, false, s.srv); }
       this._checkCtx();
     });
     a.addEventListener('waiting', () => { if (me()) this.emit('state'); });
@@ -159,7 +159,7 @@ class Player {
     if (!this._scrobbled && !s.isRadio && this.duration > 30 && (a.currentTime > this.duration / 2 || a.currentTime > 240)) {
       this._scrobbled = true;
       if (!settings.get('privateSession')) {
-        if (feat('f_scrobble')) api.scrobble(s.id, true);
+        if (feat('f_scrobble')) api.scrobble(s.id, true, s.srv);
         playLog.add(s);
       }
     }
@@ -205,7 +205,7 @@ class Player {
     if (s.isRadio) return s.streamUrl;
     const d = downloads.get(s.id);
     if (d) return d.src;
-    return api.streamUrl(s.id, { bitrate: settings.get('quality') });
+    return api.streamUrl(s.id, { bitrate: settings.get('quality') }, s.srv);
   }
 
   _needCors(s) { return !s.isRadio && this._corsOK && (settings.get('eq') || this._connected); }
@@ -270,9 +270,9 @@ class Player {
   async _nativeItem(s) {
     let uri = null;
     if (downloads.get(s.id)) { try { uri = await downloads.nativeUri(s.id); } catch { uri = null; } }
-    if (!uri) uri = api.streamUrl(s.id, { bitrate: settings.get('quality') });
+    if (!uri) uri = api.streamUrl(s.id, { bitrate: settings.get('quality') }, s.srv);
     let art = '';
-    try { art = s.isRadio ? '' : api.coverUrl(s.coverArt || s.albumId || s.id, 512); } catch { art = ''; }
+    try { art = s.isRadio ? '' : api.coverUrl(s.coverArt || s.albumId || s.id, 512, s.srv); } catch { art = ''; }
     return { id: String(s.id), uri, title: s.title || '', artist: s.artist || '', album: s.album || '', art, duration: s.duration || 0, gain: this._rg(s) };
   }
   _nativePlan() {
@@ -401,7 +401,7 @@ class Player {
     this._nowSent = true;
     this._dir = 1;
     const s = this.current;
-    if (s && !s.isRadio && this._report()) api.scrobble(s.id, false);
+    if (s && !s.isRadio && this._report()) api.scrobble(s.id, false, s.srv);
     this._applyVolume();
     this._meta();
     this._syncSession();
@@ -785,7 +785,7 @@ class Player {
     if (!s || s.isRadio || !api.ready) return;
     if (!force && Date.now() - this._lastServerSave < 25000) return;
     this._lastServerSave = Date.now();
-    api.savePlayQueue(this.queue.slice(0, 500).filter((x) => !x.isRadio).map((x) => x.id), s.id, this.time * 1000);
+    api.savePlayQueue(this.queue.slice(0, 500).filter((x) => !x.isRadio && (!x.srv || x.srv === api.activeId)).map((x) => x.id), s.id, this.time * 1000);
   }
   _restore() {
     const q = store.get('queue', null);

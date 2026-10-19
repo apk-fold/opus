@@ -822,3 +822,9 @@ body.fold-split .cov.xl { width: min(200px, 60%); }
 .imp-src { position: absolute; inset: 0; display: grid; place-items: center; color: var(--v3); } .imp-src .i { width: 48px; height: 48px; }
 .dim-off { opacity: .45; pointer-events: none; }
 .note.warn { border-color: rgba(251, 113, 133, .4); }
+
+/* Réglages › Serveurs */
+.srv-form { display: grid; gap: 10px; margin-top: 12px; }
+.srv-form[hidden] { display: none; }
+.srv-form .set-input { margin-top: 0; }
+.srv-form .err { text-align: left; }

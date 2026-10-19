@@ -1,6 +1,7 @@
 // Toutes les pages de l'appli. Chaque vue reçoit un contexte :
 //   ctx.root (conteneur), ctx.scroller, ctx.q (URLSearchParams), ctx.args, ctx.stale(), ctx.onLeave(fn), ctx.onClick(fn), ctx.title(t)
 import { batteryUnrestricted, requestUnrestricted } from './keepalive.js';
+import { serversHtml, serversMount } from './servers-ui.js';
 import { gsap } from 'gsap';
 import { api } from './api.js';
 import { player } from './player.js';
@@ -49,6 +50,7 @@ async function home(ctx) {
         <button class="btn primary glow tap ripple" data-home="mix">${icon('dice')} Mix aléatoire</button>
         <button class="btn tap ripple" data-home="fav">${icon('heart')} Favoris</button>
         <button class="btn tap ripple" data-home="resume" ${player.current ? '' : 'hidden'}>${icon('play')} Reprendre</button>
+        ${api.servers.length > 1 ? `<button class="btn tap ripple" data-home="srv">${icon('link')} ${esc(api.activeName)}</button>` : ''}
       </div>
       <div class="stats" id="stats"></div>
     </section>
@@ -66,6 +68,10 @@ async function home(ctx) {
       if (b.dataset.home === 'mix') { const s = await api.randomSongs(100); if (s.length) player.playQueue(s, 0); else toast('Aucun titre trouvé'); }
       else if (b.dataset.home === 'fav') { const st = await api.starred(); if (st.songs.length) player.playQueue(shuffled(st.songs), 0); else toast('Aucun titre en favori pour l\'instant'); }
       else if (b.dataset.home === 'resume') player.play();
+      else if (b.dataset.home === 'srv') {
+        const c = await openSheet({ title: 'Changer de serveur', items: api.servers.map((x) => ({ id: x.id, icon: 'link', label: x.name, sub: x.cfg.url, active: x.id === api.activeId })) });
+        if (c && c !== api.activeId && api.use(c)) { toast('Changement de serveur…', 1500); setTimeout(() => location.reload(), 250); }
+      }
     } catch (err) { toast('Erreur : ' + err.message); }
   });
 
@@ -620,8 +626,9 @@ async function settingsView(ctx) {
       <div class="set-row"><div class="lbl"><b>Ne plus proposer</b><small>${plural(bans.count(), 'élément masqué', 'éléments masqués')}</small></div><a class="btn tap" href="#/banned">${icon('ban')} Voir</a></div>
       <div class="set-row"><div class="lbl"><b>Gestes et raccourcis</b><small>Tirer vers le bas = menu, appui long, glisser un titre, double tap…</small></div><a class="btn tap" href="#/gestures">${icon('hand')} Régler</a></div>
     </section>
+    ${serversHtml()}
     <section class="card-box"><h4>Compte</h4>
-      <div class="set-row"><div class="lbl"><b>${esc(api.user)}</b><small>${esc(api.server)}</small></div><button class="btn tap" data-s="logout">${icon('logout')} Déconnexion</button></div>
+      <div class="set-row"><div class="lbl"><b>${esc(api.user)}</b><small>${esc(api.activeName)} · ${esc(api.server)}</small></div><button class="btn tap" data-s="logout">${icon('logout')} Déconnexion</button></div>
     </section>
     <section class="card-box"><h4>Lecture</h4>
       <div class="set-block"><div class="lbl"><b>Qualité du streaming</b><small>Réduit la consommation de données (transcodage par le serveur)</small></div>${seg('quality', [[0, 'Original'], [320, '320'], [192, '192'], [128, '128']])}</div>
@@ -685,6 +692,7 @@ async function settingsView(ctx) {
   const jump = { dl: '#set-dl', layout: '#set-layout', deemix: '#set-deemix', deezer: '#set-deezer' }[ctx.q.get('s')];
   if (jump) setTimeout(() => $(jump, ctx.root)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
   deezerSettingsMount(ctx);
+  serversMount(ctx.root);
 
   $('.hue-range', ctx.root).addEventListener('input', (e) => {
     const c = rgbToHex(hslToRgb(Number(e.target.value), 82, 62));

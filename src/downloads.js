@@ -139,7 +139,7 @@ export const downloads = {
     const ext = q ? 'mp3' : String(song.suffix || 'mp3').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'mp3';
     const { dir, root, loc } = locationOf();
     const path = joinPath(root, relPath(song, ext));
-    const url = q ? api.streamUrl(song.id, { bitrate: q }) : api.downloadUrl(song.id);
+    const url = q ? api.streamUrl(song.id, { bitrate: q }, song.srv) : api.downloadUrl(song.id, song.srv);
     await listenProgress();
     await ensureParent(path, dir);
     const fn = (p) => { if (p.url === url) onProgress?.(p.bytes, p.contentLength); };
@@ -162,7 +162,7 @@ export const downloads = {
         // les pochettes restent dans le dossier privé (n'encombrent pas la galerie du téléphone)
         const coverPath = `covers/${String(song.coverArt).replace(/[^a-z0-9_-]/gi, '_')}.jpg`;
         await ensureParent(coverPath, Directory.Data);
-        await Filesystem.downloadFile({ url: api.coverUrl(song.coverArt, 600), path: coverPath, directory: Directory.Data, recursive: true });
+        await Filesystem.downloadFile({ url: api.coverUrl(song.coverArt, 600, song.srv), path: coverPath, directory: Directory.Data, recursive: true });
         cover = await srcOf(coverPath, Directory.Data);
       } catch { cover = null; }
     }
