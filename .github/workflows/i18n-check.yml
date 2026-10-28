@@ -1,0 +1,37 @@
+name: Verify interface localization
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/i18n-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Browser test dependencies
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+      - name: Test language selector in browser
+        run: |
+          (npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/i18n-preview.log 2>&1 &)
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
+          curl -fsS http://127.0.0.1:4173/ >/dev/null
+          node tests/i18n-smoke.mjs http://127.0.0.1:4173/
