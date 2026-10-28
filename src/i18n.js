@@ -376,15 +376,17 @@ function translateTree(root) {
   if (root.nodeType === 3) { translateTextNode(root); return; }
   if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
   if (root.nodeType === 1) {
-    if (excluded(root)) return;
-    translateAttributes(root);
+    const formControl = root.matches('input,textarea');
+    if (excluded(root) && !formControl) return;
+    if (!excluded(root) || formControl) translateAttributes(root);
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node;
   while ((node = walker.nextNode())) translateTextNode(node);
   if (root.querySelectorAll) {
     for (const element of root.querySelectorAll('*')) {
-      if (!excluded(element)) translateAttributes(element);
+      const formControl = element.matches('input,textarea');
+      if (!excluded(element) || formControl) translateAttributes(element);
     }
   }
 }
