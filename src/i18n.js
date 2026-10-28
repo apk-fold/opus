@@ -251,7 +251,9 @@ function translateTextNode(node) {
 }
 
 function translateAttributes(element) {
-  if (!element || excluded(element)) return;
+  if (!element || element.nodeType !== 1) return;
+  const attributeExclusions = ['script','style','noscript','code','pre','[contenteditable="true"]','[data-no-translate]','.xterm','.xterm-screen','.xterm-rows','.terminal-output','.command-output','.doc-page','.sheet-cell','.sheet-grid','.slides-canvas','.ProseMirror','.tiptap','.editor-content'].concat(exclusions);
+  try { if (element.closest(attributeExclusions.join(','))) return; } catch { return; }
   const attrs = ['title', 'placeholder', 'aria-label'];
   let state = ATTR_STATE.get(element);
   if (!state) { state = new Map(); ATTR_STATE.set(element, state); }
@@ -316,7 +318,7 @@ function addPicker(appId) {
 
   const style = document.createElement('style');
   style.id = 'apk-fold-language-picker-style';
-  style.textContent = '#apk-fold-language-picker{position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 82px);z-index:2147483000;display:flex;align-items:center;gap:6px;padding:5px 8px;color:#f8f7ff;background:rgba(22,18,32,.94);border:1px solid rgba(255,255,255,.2);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font:12px/1.25 system-ui,-apple-system,sans-serif;max-width:150px}#apk-fold-language-picker span{font-size:14px}#apk-fold-language-picker select{min-width:0;max-width:112px;color:inherit;background:transparent;border:0;outline:none;font:inherit;padding:2px 0}#apk-fold-language-picker option{color:#17131e;background:#fff}@media(min-width:800px){#apk-fold-language-picker{left:16px;bottom:16px}}@media(max-width:360px){#apk-fold-language-picker{left:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);padding:4px 6px}}';
+  style.textContent = '#apk-fold-language-picker{position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:2147483000;display:grid;place-items:center;width:36px;height:36px;box-sizing:border-box;color:#f8f7ff;background:rgba(22,18,32,.94);border:1px solid rgba(255,255,255,.2);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font:12px/1.25 system-ui,-apple-system,sans-serif}#apk-fold-language-picker span{font-size:18px;pointer-events:none}#apk-fold-language-picker select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0}#apk-fold-language-picker option{color:#17131e;background:#fff}@media(min-width:800px){#apk-fold-language-picker{left:16px;bottom:16px}}@media(max-width:360px){#apk-fold-language-picker{left:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 82px)}}';
   document.head.appendChild(style);
   select.addEventListener('change', () => {
     try { localStorage.setItem('apk-fold.language.' + appId, select.value); } catch {}
