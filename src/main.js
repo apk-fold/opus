@@ -1,3 +1,4 @@
+import { initI18n } from './i18n.js';
 // Point d'entrée : intro, connexion, navigation, thème, boutons Android.
 import 'virtual:native-media';
 import { gsap } from 'gsap';
@@ -27,6 +28,8 @@ import { initKeepAlive } from './keepalive.js';
 // ---------------------------------------------------------------------------------------------
 // Navigation
 // ---------------------------------------------------------------------------------------------
+initI18n({ app: 'opus' });
+
 const ROOTS = ['home', 'albums', 'artists', 'playlists', 'more', 'search', 'starred', 'genres', 'radios', 'offline', 'settings', 'replay', 'deezer', 'discover', 'history'];
 // page de détail → section parente (pour allumer le bon onglet)
 const PARENT = { album: 'albums', artist: 'artists', playlist: 'playlists', dz: 'deezer', deemix: 'deezer', releases: 'discover', blindtest: 'discover', features: 'settings', banned: 'settings', gestures: 'settings', dupes: 'settings', import: 'deezer' };
