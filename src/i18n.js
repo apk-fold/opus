@@ -284,7 +284,7 @@ const APP_ROWS = [
   ['Mode tabletop / livre','Tabletop / book mode','Modo mesa / libro','Tisch-/Buchmodus','Modalità tabletop / libro','Modo mesa / livro'],
 ];
 
-const DICT = new Map([...ROWS, ...APP_ROWS].map((row) => [row[0], Object.fromEntries(LOCALES.map((l, i) => [l.code, row[i + 1] || row[0]]))]));
+const DICT = new Map([...ROWS, ...APP_ROWS].map((row) => [row[0], Object.fromEntries(LOCALES.map((l, i) => [l.code, i === 0 ? row[0] : (row[i] || row[0])]))]));
 const ORDERED = ROWS.slice().sort((a, b) => b[0].length - a[0].length);
 const TEXT_STATE = new WeakMap();
 const ATTR_STATE = new WeakMap();
